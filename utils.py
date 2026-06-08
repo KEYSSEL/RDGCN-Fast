@@ -159,7 +159,7 @@ def nearest_neighbor_sampling(pos, triples, ills, ids, k, params):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     emb_t = torch.FloatTensor(emb).to(device)
     
-    def get_topk(e1, e2, k_val, chunk_size=2000):
+    def get_topk(e1, e2, k_val, chunk_size=5000):
         all_topk_idx = []
         
         # Pré-normalisation si nécessaire (pour éviter de la refaire à chaque chunk)
