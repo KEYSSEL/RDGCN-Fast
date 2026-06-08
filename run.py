@@ -491,7 +491,6 @@ class Experiment:
             params = base_params + decoder_params + encoder_base_params
             opt = optim.Adagrad(params, lr=self.args.lr, weight_decay=self.args.wd)
             
-        # -------------------------------------------------
 
         if self.args.dr:
             scheduler = optim.lr_scheduler.ExponentialLR(opt, self.args.dr)
@@ -521,7 +520,6 @@ class Experiment:
         logger.info("="*50)
 
         logger.info(opt)
-        # -------------------------------------------------            
         
         # Train
         logger.info("Start training...")
