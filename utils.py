@@ -162,7 +162,7 @@ def nearest_neighbor_sampling(pos, triples, ills, ids, k, params):
     def get_topk(e1, e2, k_val, chunk_size=5000):
         all_topk_idx = []
         
-        # Pré-normalisation si nécessaire (pour éviter de la refaire à chaque chunk)
+        # Pré-normalisation (pour éviter de la refaire à chaque chunk)
         if metric in ['inner', 'cosine']:
             e1 = torch.nn.functional.normalize(e1, p=2, dim=1)
             e2 = torch.nn.functional.normalize(e2, p=2, dim=1)
@@ -190,7 +190,6 @@ def nearest_neighbor_sampling(pos, triples, ills, ids, k, params):
         emb_0 = emb_t[sorted_id[0]]
         emb_1 = emb_t[sorted_id[1]]
         
-        # Calcul groupé sur GPU des K plus proches voisins (évite la boucle paresseuse sur CPU)
         topk_idx_0 = get_topk(emb_0, emb_0, k)
         topk_idx_1 = get_topk(emb_1, emb_1, k)
         
@@ -252,97 +251,7 @@ def nearest_neighbor_sampling(pos, triples, ills, ids, k, params):
         raise NotImplementedError
     # print("\tnearest_neighbor_sampling time cost: {:.3f} s".format(time.time() - t_))
     return neg
-"""
 
-def nearest_neighbor_sampling(pos, triples, ills, ids, k, params):
-    t_ = time.time()
-    emb = params["emb"]  # On suppose que c'est un numpy.array
-    metric = params["metric"]
-    
-    # --- OPTIMISATION FAISS ---
-    def get_topk_faiss(query_emb, gallery_emb, k_val):
-        d = query_emb.shape[1]
-        
-        # 1. Normalisation pour Cosine/Inner Product
-        if metric in ['inner', 'cosine']:
-            # Copie pour ne pas modifier l'original
-            query_norm = query_emb / np.linalg.norm(query_emb, axis=1, keepdims=True)
-            gallery_norm = gallery_emb / np.linalg.norm(gallery_emb, axis=1, keepdims=True)
-            index = faiss.IndexFlatIP(d)
-            index.add(gallery_norm.astype('float32'))
-            distances, indices = index.search(query_norm.astype('float32'), k_val + 1)
-        else:
-            # Euclidean (L2)
-            index = faiss.IndexFlatL2(d)
-            index.add(gallery_emb.astype('float32'))
-            distances, indices = index.search(query_emb.astype('float32'), k_val + 1)
-            
-        # On exclut la première colonne (l'entité elle-même)
-        return indices[:, 1:]
-
-    # --- TRAITEMENT DES TRIPLES ---
-    if len(pos[0]) == 3:
-        sorted_id = [sorted(ids[0]), sorted(ids[1])]
-        emb_0 = emb[sorted_id[0]]
-        emb_1 = emb[sorted_id[1]]
-        
-        # Remplacement par FAISS
-        topk_idx_0 = get_topk_faiss(emb_0, emb_0, k)
-        topk_idx_1 = get_topk_faiss(emb_1, emb_1, k)
-        
-        cache_dict = {}
-        for i, ent in enumerate(sorted_id[0]):
-            cache_dict[ent] = [sorted_id[0][idx] for idx in topk_idx_0[i]]
-        for i, ent in enumerate(sorted_id[1]):
-            cache_dict[ent] = [sorted_id[1][idx] for idx in topk_idx_1[i]]
-            
-        neg = []
-        triples_set = set(triples)
-        for _ in range(k):
-            for (h, r, t) in pos:
-                num_tries = 0 
-                while True:
-                    h2, r2, t2 = h, r, t
-                    choice = np.random.binomial(1, 0.5)
-                    if num_tries > 30:
-                        if choice: h2 = random.choice(sorted_id[0])
-                        else: t2 = random.choice(sorted_id[1])
-                    else:
-                        if choice: h2 = random.choice(cache_dict[h])
-                        else: t2 = random.choice(cache_dict[t])
-                    if (h2, r2, t2) not in triples_set:
-                        break
-                    num_tries += 1
-                neg.append((h2, r2, t2))
-
-    # --- TRAITEMENT DES ILLs ---
-    elif len(pos[0]) == 2:
-        pos_np = np.array(pos)
-        emb_l = emb[pos_np[:, 0]]
-        emb_r = emb[pos_np[:, 1]]
-        
-        # Recherche des voisins parmi les candidats possibles
-        topk_l_idx = get_topk_faiss(emb_l, emb_l, k)
-        topk_r_idx = get_topk_faiss(emb_r, emb_r, k)
-        
-        neg_left = []
-        for i in range(len(pos_np)):
-            # On récupère les IDs originaux via l'indexation
-            neg_left.append(pos_np[:, 0][topk_l_idx[i]])
-        neg_left = np.stack(neg_left, axis=1).reshape(-1, 1)
-        
-        neg_right = []
-        for i in range(len(pos_np)):
-            neg_right.append(pos_np[:, 1][topk_r_idx[i]])
-        neg_right = np.stack(neg_right, axis=1).reshape(-1, 1)
-        
-        # Reconstruction des paires négatives
-        neg_left = np.concatenate((neg_left, np.tile(pos_np, (k, 1))[:, 1].reshape(-1, 1)), axis=1).tolist()
-        neg_right = np.concatenate((np.tile(pos_np, (k, 1))[:, 0].reshape(-1, 1), neg_right), axis=1).tolist()
-        neg = neg_left + neg_right
-        
-    return neg
-"""
 
 def random_sampling(pos, triples, ills, ids, k, params):
     t_ = time.time()
