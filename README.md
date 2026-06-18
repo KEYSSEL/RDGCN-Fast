@@ -20,7 +20,7 @@ The code has been tested with the following versions. A configuration with `cond
 - **Python :** `3.8`
 - **CUDA :** `11.3`
 - **PyTorch :** `1.10.0`
-- **torch-geometric** et ses dépendances (scatter, sparse, etc.)
+- **torch-geometric** and its dependencies (scatter, sparse, etc.)
 - **graph-tool**
 - **gensim**
 - **faiss-cpu**
